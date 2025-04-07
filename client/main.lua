@@ -4,6 +4,7 @@ local Blips = {}
 local DefaultBlips = {}
 local PingingBlips = {}
 local ShowMyBlips = true
+local MyRouteBlip = nil
 
 AddEventHandler('QBCore:Client:OnPlayerLoaded', function()
     TriggerServerEvent('sayer-blipcreator:PlayerLoaded')
@@ -379,6 +380,16 @@ RegisterNetEvent('sayer-blipcreator:client:ManageABlip',function(ID, blip_name)
         })
     end
 
+    if Config.AllowSetGPS then
+        table.insert(columns, {
+            title = "Set GPS",
+            description = "Add a GPS Route To This Marker",
+            onSelect = function()
+                TriggerEvent('sayer-blipcreator:client:SetGPSTo',ID)
+            end
+        })
+    end
+
     table.insert(columns, {
         title = "Update Marker",
         description = "Update a specific attribute of this marker",
@@ -483,6 +494,40 @@ RegisterNetEvent('sayer-blipcreator:client:FastTravelTo',function(blip_id)
     SetEntityCoords(PlayerPedId(), travel_to_coords.x, travel_to_coords.y, travel_to_coords.z, false, false, false, false)
     Wait(100)
     DoScreenFadeIn(1000)
+end)
+
+RegisterNetEvent('sayer-blipcreator:client:SetGPSTo',function(blip_id)
+    if not Config.AllowSetGPS then return end
+
+    if not Blips[blip_id] then return end
+    if MyRouteBlip ~= nil then
+        if DoesBlipExist(MyRouteBlip) then
+            RemoveBlip(MyRouteBlip)
+        end
+    end
+
+    local route_colour = GetBlipColour(Blips[blip_id])
+    local route_coords = GetBlipCoords(Blips[blip_id])
+
+    MyRouteBlip = AddBlipForCoord(route_coords)
+    SetBlipRoute(MyRouteBlip, true)
+    SetBlipSprite(MyRouteBlip, 0)
+    SetBlipRouteColour(MyRouteBlip, route_colour)
+end)
+
+CreateThread(function()
+    while true do
+        Wait(1000)
+        if MyRouteBlip ~= nil then
+            if DoesBlipExist(MyRouteBlip) then
+                local blip_coords = GetBlipCoords(MyRouteBlip)
+                if #(GetEntityCoords(PlayerPedId()) - blip_coords) < 25.0 then
+                    RemoveBlip(MyRouteBlip)
+                    MyRouteBlip = nil
+                end
+            end
+        end
+    end
 end)
 
 -- RADIAL MENU

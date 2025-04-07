@@ -14,10 +14,11 @@ Config.AllowPinging = true --allows players to ping their blip (putting a small 
 Config.PingBlipTimer = 5 --how many seconds the player blip with "glow" until returning back to normal
 Config.BlipPingSprite = 161 --flashing blip. change if wanted
 
+Config.AllowSetGPS = true --allows players to set GPS waypoint on the blip from menu
 Config.AllowFastTravel = false --alot of people wont want this but its there for those that do
 
 Config.BlipItem = false --false or itemcode to make the blip creator as an item
-Config.BlipCreationRequiresThisItem = 'rubber' --either false for no item needed to make blip or itemcode that is required
+Config.BlipCreationRequiresThisItem = 'gps_beacon' --either false for no item needed to make blip or itemcode that is required
 
 Config.BlipCommand = false --false or command code to make blip creator as a /command
 

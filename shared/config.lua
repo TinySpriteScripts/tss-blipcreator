@@ -22,6 +22,12 @@ Config.BlipCreationRequiresThisItem = 'gps_beacon' --either false for no item ne
 
 Config.BlipCommand = false --false or command code to make blip creator as a /command
 
+Config.BlipDiscoveryRange = 30.0
+Config.ShowDiscoveryUI = {
+    Blip = true,
+    Zone = true,
+}
+
 -- link to find Sprites/colours : https://docs.fivem.net/docs/game-references/blips/
 Config.Sprites = { --sprite name followed by the number code of sprite (will only show these sprites as available)
     ['Race Flag'] = 38,
@@ -88,17 +94,28 @@ Config.Scales = { --list of available sizes you want players to use
 
 Config.DefaultBlips = {
 
-    -- EXAMPLE. these blips will show for everyone. can be empty if you dont want any default blips
-    [1] = {
-        JobLocked = false, -- false or name of job 'police'
-        vector = vector3(-499.42, 5268.11, 80.61),
-        text = "Woodworking",
-        color = 64,
-        sprite = 566,
-        scale = 0.5,
-        rangeshort = true,
-        view = 5,
-        hiddenlegend = false,
-    },
+    -- EXAMPLE. these blips will show for everyone. can be empty if you dont want any default blips (do not need to be discovered)
+    -- [1] = {
+    --     JobLocked = false, -- false or name of job 'police'
+    --     vector = vector3(-499.42, 5268.11, 80.61),
+    --     text = "Woodworking",
+    --     color = 64,
+    --     sprite = 566,
+    --     scale = 0.5,
+    --     rangeshort = true,
+    --     view = 5,
+    --     hiddenlegend = false,
+    -- },
 }
     
+
+Config.DiscoverableBlips = { --still WIP
+    ["burgershot_1"] = {
+        JobLocked = false, -- false or name of job 'police' --locks it so only a specific job can discover this blip
+        label = "Burgershot",
+        coords = vector3(-499.42, 5268.11, 80.61),
+        colour = 64,
+        sprite = 566,
+        scale = 0.5,
+    },
+}

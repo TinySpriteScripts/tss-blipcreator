@@ -2,7 +2,7 @@ local QBCore = exports['qb-core']:GetCoreObject()
 
 if Config.BlipItem then
     QBCore.Functions.CreateUseableItem(Config.BlipItem , function(source, item)
-        TriggerClientEvent('sayer-blipcreator:client:OpenMenu', source)
+        TriggerClientEvent('tss-blipcreator:client:OpenMenu', source)
     end)
 end
 
@@ -31,7 +31,7 @@ function GenerateBlipCode(citizenid, callback)
 end
 
 
-RegisterNetEvent('sayer-blipcreator:PlayerLoaded',function()
+RegisterNetEvent('tss-blipcreator:PlayerLoaded',function()
     local src = source
     if not src then return end
     local Player = QBCore.Functions.GetPlayer(src)
@@ -42,12 +42,13 @@ RegisterNetEvent('sayer-blipcreator:PlayerLoaded',function()
     MySQL.rawExecute('SELECT * FROM player_blips WHERE citizenid = ?', { cid }, function(result)
         if result[1] then
             local BlipData = json.decode(result[1].blips)
-            TriggerClientEvent('sayer-blipcreator:client:CreateBlips',src, BlipData)
+            local DiscoveredBlips = json.decode(result[1].blip_discovery)
+            TriggerClientEvent('tss-blipcreator:client:CreateBlips',src, BlipData, DiscoveredBlips)
         end
     end)
 end)
 
-RegisterNetEvent('sayer-blipcreator:server:RegisterBlip', function(label, sprite, colour, scale, coords, senderSource)
+RegisterNetEvent('tss-blipcreator:server:RegisterBlip', function(label, sprite, colour, scale, coords, senderSource)
     DebugCode("RegisterBlip Reached Server")
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
@@ -79,7 +80,7 @@ RegisterNetEvent('sayer-blipcreator:server:RegisterBlip', function(label, sprite
                     }
                     local FormattedData = json.encode(BlipData)
                     MySQL.update('UPDATE player_blips SET blips = ? WHERE citizenid = ?', { FormattedData, citizenid }) 
-                    TriggerClientEvent('sayer-blipcreator:client:NewBlipRegistered', src, BlipData, NewBlipCode)
+                    TriggerClientEvent('tss-blipcreator:client:NewBlipRegistered', src, BlipData, NewBlipCode)
                     if senderSource ~= nil then
                         SendNotify(senderSource, "Share Accepted", "Your Share Was Accepted", 'success', 5000)
                     end
@@ -101,7 +102,7 @@ RegisterNetEvent('sayer-blipcreator:server:RegisterBlip', function(label, sprite
                     json.encode(BlipData),
                 })
                 DebugCode("New BlipData Inserted/ creating new blip")
-                TriggerClientEvent('sayer-blipcreator:client:NewBlipRegistered', src, BlipData, NewBlipCode)
+                TriggerClientEvent('tss-blipcreator:client:NewBlipRegistered', src, BlipData, NewBlipCode)
                 if senderSource ~= nil then
                     SendNotify(senderSource, "Share Accepted", "Your Share Was Accepted", 'success', 5000)
                 end
@@ -110,7 +111,7 @@ RegisterNetEvent('sayer-blipcreator:server:RegisterBlip', function(label, sprite
     end)
 end)
 
-RegisterNetEvent('sayer-blipcreator:server:UpdateBlip', function(id, label, sprite, colour, scale)
+RegisterNetEvent('tss-blipcreator:server:UpdateBlip', function(id, label, sprite, colour, scale)
     DebugCode("UpadteBlip Reached Server")
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
@@ -127,8 +128,8 @@ RegisterNetEvent('sayer-blipcreator:server:UpdateBlip', function(id, label, spri
                 BlipData[id].scale = scale
                 local FormattedData = json.encode(BlipData)
                 MySQL.update('UPDATE player_blips SET blips = ? WHERE citizenid = ?', { FormattedData, citizenid }) 
-                TriggerClientEvent('sayer-blipcreator:client:UpdateBlip', src, BlipData, id)
-                TriggerClientEvent('sayer-blipcreator:client:ManageMarkersMenu', src)
+                TriggerClientEvent('tss-blipcreator:client:UpdateBlip', src, BlipData, id)
+                TriggerClientEvent('tss-blipcreator:client:ManageMarkersMenu', src)
             else
                 DebugCode("Cannot Find Blip With Matching ID")
             end
@@ -138,7 +139,7 @@ RegisterNetEvent('sayer-blipcreator:server:UpdateBlip', function(id, label, spri
     end)
 end)
 
-RegisterNetEvent('sayer-blipcreator:server:DeleteBlip', function(ID)
+RegisterNetEvent('tss-blipcreator:server:DeleteBlip', function(ID)
     local id = ID
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
@@ -150,20 +151,20 @@ RegisterNetEvent('sayer-blipcreator:server:DeleteBlip', function(ID)
                 BlipData[id] = nil
                 local FormattedData = json.encode(BlipData)
                 MySQL.update('UPDATE player_blips SET blips = ? WHERE citizenid = ?', { FormattedData, citizenid }) 
-                TriggerClientEvent('sayer-blipcreator:client:RemoveBlip',src, id)
-                TriggerClientEvent('sayer-blipcreator:client:ManageMarkersMenu', src)
+                TriggerClientEvent('tss-blipcreator:client:RemoveBlip',src, id)
+                TriggerClientEvent('tss-blipcreator:client:ManageMarkersMenu', src)
             else
                 DebugCode("Error Finding Blip Data for Citizenid: "..citizenid.." with blip ID: "..tostring(id))
             end
         else
             DebugCode("No Blip Data For Citizenid: "..citizenid)
-            TriggerClientEvent('sayer-blipcreator:client:RemoveBlip',src, id)
-            TriggerClientEvent('sayer-blipcreator:client:ManageMarkersMenu', src)
+            TriggerClientEvent('tss-blipcreator:client:RemoveBlip',src, id)
+            TriggerClientEvent('tss-blipcreator:client:ManageMarkersMenu', src)
         end
     end)
 end)
 
-RegisterNetEvent('sayer-blipcreator:server:ShareBlipWith', function(blip_id, target_source)
+RegisterNetEvent('tss-blipcreator:server:ShareBlipWith', function(blip_id, target_source)
     DebugCode("ShareBlip Reached Server")
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
@@ -182,7 +183,7 @@ RegisterNetEvent('sayer-blipcreator:server:ShareBlipWith', function(blip_id, tar
             DebugCode("Found Existing BlipData to share")
             local BlipData = json.decode(result[1].blips)
             if BlipData[blip_id] ~= nil then
-                TriggerClientEvent('sayer-blipcreator:client:ReceiveBlip', target_source, BlipData[blip_id], sender_info)
+                TriggerClientEvent('tss-blipcreator:client:ReceiveBlip', target_source, BlipData[blip_id], sender_info)
             else
                 DebugCode("Cannot Find Blip With Matching ID")
             end
@@ -192,7 +193,7 @@ RegisterNetEvent('sayer-blipcreator:server:ShareBlipWith', function(blip_id, tar
     end)
 end)
 
-QBCore.Functions.CreateCallback('sayer-blipcreator:server:GetBlipData', function(source, cb, blip_id)
+QBCore.Functions.CreateCallback('tss-blipcreator:server:GetBlipData', function(source, cb, blip_id)
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
     local citizenid = Player.PlayerData.citizenid
@@ -212,7 +213,7 @@ QBCore.Functions.CreateCallback('sayer-blipcreator:server:GetBlipData', function
     end)
 end)
 
-QBCore.Functions.CreateCallback('sayer-blipcreator:server:GetMyBlips', function(source, cb)
+QBCore.Functions.CreateCallback('tss-blipcreator:server:GetMyBlips', function(source, cb)
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
     local citizenid = Player.PlayerData.citizenid
@@ -232,7 +233,7 @@ QBCore.Functions.CreateCallback('sayer-blipcreator:server:GetMyBlips', function(
     end)
 end)
 
-QBCore.Functions.CreateCallback('sayer-blipcreator:server:GetNearbyPlayers', function(source, cb)
+QBCore.Functions.CreateCallback('tss-blipcreator:server:GetNearbyPlayers', function(source, cb)
 	local nearbyPlayers = {}
 	for _, v in pairs(QBCore.Functions.GetPlayers()) do
 		local Player = QBCore.Functions.GetPlayer(v)

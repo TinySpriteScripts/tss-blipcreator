@@ -1,21 +1,14 @@
-local QBCore = exports['qb-core']:GetCoreObject()
-
 Blips = {}
 DefaultBlips = {}
 PingingBlips = {}
 ShowMyBlips = true
 MyRouteBlip = nil
 
-AddEventHandler('QBCore:Client:OnPlayerLoaded', function()
+onPlayerLoaded(function()
+    debugPrint("player has loaded")
     TriggerServerEvent('tss-blipcreator:PlayerLoaded')
     TriggerEvent('tss-blipcreator:CreateDefaultBlips')
-end)
-
-AddEventHandler('onResourceStart', function(resource) 
-    if GetCurrentResourceName() ~= resource then return end
-    TriggerServerEvent('tss-blipcreator:PlayerLoaded')
-    TriggerEvent('tss-blipcreator:CreateDefaultBlips')
-end)
+end, true)
 
 RegisterNetEvent('tss-blipcreator:CreateDefaultBlips',function()
     for k,v in pairs(Config.DefaultBlips) do
@@ -39,9 +32,9 @@ RegisterNetEvent('tss-blipcreator:client:CreateBlips',function(data, discovered)
             RemoveBlip(Blips[k])
         end
         Blips[k] = AddBlipForCoord(v.coords.x,v.coords.y,v.coords.z)
-        SetBlipSprite(Blips[k], Config.Sprites[v.sprite])
-        SetBlipScale(Blips[k], Config.Scales[v.scale])
-        SetBlipColour(Blips[k], Config.Colours[v.colour])
+        SetBlipSprite(Blips[k], Config.BlipOptions.Sprites[v.sprite])
+        SetBlipScale(Blips[k], Config.BlipOptions.Scales[v.scale])
+        SetBlipColour(Blips[k], Config.BlipOptions.Colours[v.colour])
         SetBlipAsShortRange(Blips[k], true)
         BeginTextCommandSetBlipName("STRING")
         AddTextComponentString(v.label)
@@ -56,14 +49,14 @@ end)
 
 RegisterNetEvent('tss-blipcreator:client:UpdateBlip',function(data, code)
     if DoesBlipExist(Blips[code]) then
-        DebugCode("Removing Old Blip")
+        debugPrint("Removing Old Blip")
         RemoveBlip(Blips[code])
     end
     local settings = data[code]
     Blips[code] = AddBlipForCoord(settings.coords.x,settings.coords.y,settings.coords.z)
-    SetBlipSprite(Blips[code], Config.Sprites[settings.sprite])
-    SetBlipScale(Blips[code], Config.Scales[settings.scale])
-    SetBlipColour(Blips[code], Config.Colours[settings.colour])
+    SetBlipSprite(Blips[code], Config.BlipOptions.Sprites[settings.sprite])
+    SetBlipScale(Blips[code], Config.BlipOptions.Scales[settings.scale])
+    SetBlipColour(Blips[code], Config.BlipOptions.Colours[settings.colour])
     SetBlipAsShortRange(Blips[code], true)
     BeginTextCommandSetBlipName("STRING")
     AddTextComponentString(settings.label)
@@ -73,7 +66,7 @@ RegisterNetEvent('tss-blipcreator:client:UpdateBlip',function(data, code)
     else
         SetBlipDisplay(Blips[code], 0)
     end
-    DebugCode("Blip Fully Updated")
+    debugPrint("Blip Fully Updated")
 end)
 
 RegisterNetEvent('tss-blipcreator:client:CreateBlipPing',function(code)
@@ -88,9 +81,9 @@ RegisterNetEvent('tss-blipcreator:client:CreateBlipPing',function(code)
         local base_blip_colour = GetBlipColour(Blips[code])
         PingingBlips[code] = {}
         PingingBlips[code].ID = AddBlipForCoord(base_blip_coords)
-        SetBlipSprite(PingingBlips[code].ID, Config.BlipPingSprite)
+        SetBlipSprite(PingingBlips[code].ID, Config.Options.BlipPingSprite)
         SetBlipColour(PingingBlips[code].ID, base_blip_colour)
-        PingingBlips[code].Timer = Config.PingBlipTimer
+        PingingBlips[code].Timer = Config.Options.PingBlipTimer
     end
 end)
 
@@ -120,15 +113,15 @@ end)
 
 RegisterNetEvent('tss-blipcreator:client:NewBlipRegistered',function(data, code)
     if data ~= nil and code ~= nil then
-        DebugCode("data and code not nil")
+        debugPrint("data and code not nil")
         CreateNewBlip(data,code)
     else
-        DebugCode("NewBlip Data or code is nil")
+        debugPrint("NewBlip Data or code is nil")
     end
 end)
 
 RegisterNetEvent('tss-blipcreator:client:FastTravelTo',function(blip_id)
-    if not Config.AllowFastTravel then return end
+    if not Config.Options.AllowFastTravel then return end
 
     if not Blips[blip_id] then return end
     local travel_to_coords = GetBlipCoords(Blips[blip_id])
@@ -143,7 +136,7 @@ RegisterNetEvent('tss-blipcreator:client:FastTravelTo',function(blip_id)
 end)
 
 RegisterNetEvent('tss-blipcreator:client:SetGPSTo',function(blip_id)
-    if not Config.AllowSetGPS then return end
+    if not Config.Options.AllowSetGPS then return end
 
     if not Blips[blip_id] then return end
     if MyRouteBlip ~= nil then

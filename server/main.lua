@@ -1,11 +1,13 @@
-CreateThread(function()
-    if Config.Options.BlipItem then
-        createUseableItem(Config.Options.BlipItem, function(source)
-            print("using item")
-            TriggerClientEvent('tss-blipcreator:client:OpenMenu', source)
-        end)
-    end
-end)
+onResourceStart(function()
+    CreateThread(function()
+        if Config.Options.BlipItem then
+            createUseableItem(Config.Options.BlipItem, function(source)
+                print("using item")
+                TriggerClientEvent('tss-blipcreator:client:OpenMenu', source)
+            end)
+        end
+    end)
+end, true )
 
 function GenerateBlipCode(citizenid, callback)
     local UniqueFound = false

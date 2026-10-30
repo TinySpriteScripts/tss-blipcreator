@@ -2,6 +2,7 @@ RegisterNetEvent('tss-blipcreator:client:OpenMenu',function()
     local options = {
         {
             header = "Create Marker",
+            icon = "fas fa-map-marker-alt",
             txt = "Create a custom marker for your map",
             onSelect = function()
                 TriggerEvent('tss-blipcreator:client:CreateBlipForm',nil,false)
@@ -9,13 +10,14 @@ RegisterNetEvent('tss-blipcreator:client:OpenMenu',function()
         },
         {
             header = "My Markers",
+            icon = "fas fa-map",
             txt = "Manage Your Markers",
             onSelect = function()
                 TriggerEvent('tss-blipcreator:client:ManageMarkersMenu')
             end
         },
     }
-    openMenu(options, {
+    MarkerMenu(options, {
         header = "Custom Map Markers",
         headertxt = "",
         canClose = true,
@@ -23,10 +25,10 @@ RegisterNetEvent('tss-blipcreator:client:OpenMenu',function()
 end)
 
 RegisterNetEvent('tss-blipcreator:client:CreateBlipForm', function(ID, edit)
-    if edit and not ID then debugPrint("No Id sent with edit form") return end
+    if edit and not ID then TSS.Debug.Print("No Id sent with edit form") return end
     -- checks if you require a item to make blip and if you dont have it then cancels
-    if not edit and Config.Options.BlipCreationRequiresThisItem and Items[Config.Options.BlipCreationRequiresThisItem] ~= nil and not hasItem(Config.Options.BlipCreationRequiresThisItem, 1) then
-        triggerNotify("Item Needed", "You Need a "..Items[Config.Options.BlipCreationRequiresThisItem].label, 'error')
+    if not edit and Config.Options.BlipCreationRequiresThisItem and not TSS.Inventory.Has(Config.Options.BlipCreationRequiresThisItem, 1) then
+        MarkerNotify("Item Needed", "You Need a "..MarkerItemLabel(Config.Options.BlipCreationRequiresThisItem), 'error')
         return
     end
 
@@ -39,78 +41,52 @@ RegisterNetEvent('tss-blipcreator:client:CreateBlipForm', function(ID, edit)
         local defaultlabel  = blipData and blipData.label  or "Blip"
         local defaultscale  = blipData and blipData.scale  or "Regular"
 
-        local columns = {}
-        local Sprites, Colours, Scales = {}, {}, {}
-
-        table.insert(columns, {
-            type = "text", 
-            label = "Label", 
-            icon = 'fas fa-tag',
-            text = "Name of Marker",
-            name = "label",       
-            isRequired = true,
-            default = defaultlabel,
-        })
-
-        for k, _ in pairs(Config.BlipOptions.Sprites) do
-            table.insert(Sprites, { label = k, value = k })
+        local values = { label = defaultlabel, sprite = defaultsprite, colour = defaultcolour, scale = defaultscale }
+        local showForm
+        local function choose(field, choices)
+            local options = {}
+            local names = {}
+            for name in pairs(choices) do names[#names + 1] = name end
+            table.sort(names)
+            for _, name in ipairs(names) do
+                options[#options + 1] = { header = name, icon = field == 'sprite' and MarkerSpriteIcon(name) or nil, onSelect = function()
+                    values[field] = name
+                    showForm()
+                end }
+            end
+            MarkerMenu(options, { header = 'Choose ' .. field })
         end
-        table.insert(columns, {
-            type = "select",
-            label = "Sprite", 
-            icon = 'fas fa-location-dot',
-            text = "Blip Icon",  
-            name = "sprite",      
-            options = Sprites,
-            isRequired = true,
-            default = defaultsprite,
-        })
-
-        for k, _ in pairs(Config.BlipOptions.Colours) do
-            table.insert(Colours, { label = k, value = k })
+        showForm = function()
+            MarkerMenu({
+                { header = 'Label: ' .. values.label, onSelect = function()
+                    TSS.UI.Input({ title = 'Marker label', fields = {
+                        { name = 'label', label = 'Name of marker', value = values.label }
+                    } }, function(result)
+                        local label = result and result.values and result.values.label
+                        if type(label) == 'string' and label:match('%S') then values.label = label end
+                        showForm()
+                    end)
+                end },
+                { header = 'Sprite: ' .. values.sprite, icon = MarkerSpriteIcon(values.sprite), onSelect = function() choose('sprite', Config.BlipOptions.Sprites) end },
+                { header = 'Colour: ' .. values.colour, onSelect = function() choose('colour', Config.BlipOptions.Colours) end },
+                { header = 'Scale: ' .. values.scale, onSelect = function() choose('scale', Config.BlipOptions.Scales) end },
+                { header = SubmitButtonText, onSelect = function()
+                    if edit then
+                        TriggerServerEvent('tss-blipcreator:server:UpdateBlip', ID, values.label, values.sprite, values.colour, values.scale)
+                    else
+                        TriggerServerEvent('tss-blipcreator:server:RegisterBlip', values.label, values.sprite, values.colour, values.scale, GetEntityCoords(PlayerPedId()), nil)
+                    end
+                end },
+            }, { header = MenuTitle })
         end
-        table.insert(columns, {
-            type = "select",
-            label = "Colour", 
-            icon = 'fas fa-palette',
-            text = "Colour of Icon",   
-            name = "colour",
-            options = Colours,  
-            isRequired = true,
-            default = defaultcolour,
-        })
-
-        for k, _ in pairs(Config.BlipOptions.Scales) do
-            table.insert(Scales, { label = k, value = k })
-        end
-        table.insert(columns, {
-            type = "select",
-            label = "Scale",   
-            icon = 'fas fa-ruler',
-            text = "Scale of Icon", 
-            name = "scale",    
-            options = Scales,  
-            isRequired = true,
-            default = defaultscale,
-        })
-
-        local delmenu = createInput(MenuTitle, columns)
-        if delmenu == nil then debugPrint("Returned Nil") return end
-
-        if edit then
-            debugPrint("Updating Blip")
-            TriggerServerEvent('tss-blipcreator:server:UpdateBlip', ID, delmenu[1], delmenu[2], delmenu[3], delmenu[4])
-        else
-            local PlayerCoords = GetEntityCoords(PlayerPedId())
-            TriggerServerEvent('tss-blipcreator:server:RegisterBlip', delmenu[1], delmenu[2], delmenu[3], delmenu[4], PlayerCoords, nil)
-        end
+        showForm()
     end
 
     -- Only use callback if editing
     if edit then
-        local blipData = triggerCallback('tss-blipcreator:server:GetBlipData', ID)
+        local blipData = TSS.Callbacks.Await('tss-blipcreator:server:GetBlipData', nil, ID)
         if not blipData then
-            debugPrint("Could not load blip data for ID: " .. tostring(ID))
+            TSS.Debug.Print("Could not load blip data for ID: " .. tostring(ID))
             return
         end
         OpenBlipForm(blipData)
@@ -140,26 +116,27 @@ RegisterNetEvent('tss-blipcreator:client:ManageMarkersMenu',function()
             end
         },
     }
-    local result = triggerCallback('tss-blipcreator:server:GetMyBlips')
+    local result = TSS.Callbacks.Await('tss-blipcreator:server:GetMyBlips')
     if result then
-        debugPrint("got a result")
+        TSS.Debug.Print("got a result")
         for k,v in pairs(result) do
-            debugPrint("K = "..k)
+            TSS.Debug.Print("K = "..k)
             local item = {}
             item.header = v.label
+            item.icon = MarkerSpriteIcon(v.sprite)
             item.onSelect = function()
                 TriggerEvent('tss-blipcreator:client:ManageABlip',k, v.label)
             end
             table.insert(columns, item)
-        end 
-        openMenu(columns, {
+        end
+        MarkerMenu(columns, {
             header = "Manage Markers",
             headertxt = "",
             canClose = true,
         })
     else
-        debugPrint("return was nil")
-        triggerNotify("Markers", "You Do Not Have Any Active Markers", 'error')
+        TSS.Debug.Print("return was nil")
+        MarkerNotify("Markers", "You Do Not Have Any Active Markers", 'error')
     end
 end)
 
@@ -222,7 +199,7 @@ RegisterNetEvent('tss-blipcreator:client:ManageABlip',function(ID, blip_name)
         end
     })
 
-    openMenu(columns, {
+    MarkerMenu(columns, {
         header = "Marker: "..blip_name,
         headertxt = " id: "..tostring(ID),
         canClose = true,
@@ -231,24 +208,16 @@ end)
 
 RegisterNetEvent('tss-blipcreator:client:ShareMarkerMenu',function(blip_id)
     local columns = {}
-    local result = triggerCallback('tss-blipcreator:server:GetNearbyPlayers')
+    local result = TSS.Callbacks.Await('tss-blipcreator:server:GetNearbyPlayers')
     if result then
         local nearbyList = {}
-        for _, player in pairs(GetPlayersFromCoords(GetEntityCoords(PlayerPedId()), Config.Options.SharingDistance)) do
-            local dist = #(GetEntityCoords(GetPlayerPed(player)) - GetEntityCoords(PlayerPedId()))
-            for i = 1, #result do
-                if result[i].nearbySource == GetPlayerServerId(player) then
-                    if player ~= PlayerId() or debugMode then
-                        nearbyList[#nearbyList+1] = {
-                            nearbySource = result[i].nearbySource, 
-                            name = result[i].name, 
-                        }
-                    end
-                end
+        for _, player in ipairs(result) do
+            if player.nearbySource ~= GetPlayerServerId(PlayerId()) then
+                nearbyList[#nearbyList + 1] = player
             end
         end
         if nearbyList[1] == nil then
-            triggerNotify("Nobody Nearby", "There isnt anybody here to share with", 'error')
+            MarkerNotify("Nobody Nearby", "There isnt anybody here to share with", 'error')
             return
         end
         for _,v in pairs(nearbyList) do
@@ -259,14 +228,14 @@ RegisterNetEvent('tss-blipcreator:client:ShareMarkerMenu',function(blip_id)
                 TriggerServerEvent('tss-blipcreator:server:ShareBlipWith',blip_id, nearbySource)
             end
             table.insert(columns, item)
-        end 
-        openMenu(columns, {
+        end
+        MarkerMenu(columns, {
             header = "Share Marker With...",
             headertxt = "",
             canClose = true,
         })
     else
-        triggerNotify("Markers", "cant retrieve players", 'error')
+        MarkerNotify("Markers", "cant retrieve players", 'error')
     end
 end)
 
@@ -274,6 +243,7 @@ RegisterNetEvent('tss-blipcreator:client:ReceiveBlip',function(new_data, sender_
     local options = {
         {
             header = "Accept Marker",
+            icon = MarkerSpriteIcon(new_data.sprite),
             txt = "Receive Marker",
             onSelect = function()
                 TriggerServerEvent('tss-blipcreator:server:RegisterBlip',new_data.label, new_data.sprite, new_data.colour, new_data.scale, new_data.coords, sender_info.senderSource)
@@ -283,11 +253,11 @@ RegisterNetEvent('tss-blipcreator:client:ReceiveBlip',function(new_data, sender_
             header = "Decline Marker",
             txt = "Do Not Receive Marker",
             onSelect = function()
-                TriggerEvent('tss-blipcreator:client:ShareMarkerMenu',ID)
+                TSS.UI.Close()
             end
         },
     }
-    openMenu(options, {
+    MarkerMenu(options, {
         header = "Received Marker ["..new_data.label.."] from ["..sender_info.name.."], Accept?",
         headertxt = "",
         canClose = true,

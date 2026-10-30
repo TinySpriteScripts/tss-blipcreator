@@ -1,45 +1,33 @@
+-- All personal-marker creation and editing shares one bridge call path.
 function CreateNewBlip(data, code)
-    debugPrint("Finalising Blip")
-    if Blips[code] ~= nil then
-        RemoveBlip(Blips[code])
-    end
-    local settings = data[code]
-    Blips[code] = AddBlipForCoord(vector3(settings.coords.x, settings.coords.y, settings.coords.z))
-    SetBlipSprite(Blips[code], Config.BlipOptions.Sprites[settings.sprite])
-    SetBlipScale(Blips[code], Config.BlipOptions.Scales[settings.scale])
-    SetBlipColour(Blips[code], Config.BlipOptions.Colours[settings.colour])
-    SetBlipAsShortRange(Blips[code], true)
-    BeginTextCommandSetBlipName("STRING")
-    AddTextComponentString(settings.label)
-    EndTextCommandSetBlipName(Blips[code])
-    if ShowMyBlips then
-        SetBlipDisplay(Blips[code], 2)
+    local settings = data and data[code]
+    if not settings then return end
+    local options = {
+        coords = settings.coords,
+        sprite = Config.BlipOptions.Sprites[settings.sprite],
+        scale = Config.BlipOptions.Scales[settings.scale],
+        colour = Config.BlipOptions.Colours[settings.colour],
+        label = settings.label,
+        shortRange = true,
+        display = ShowMyBlips and 2 or 0,
+    }
+    if TSS.Blips.Exists(Blips[code]) then
+        TSS.Blips.Update(Blips[code], options)
     else
-        SetBlipDisplay(Blips[code], 0)
+        Blips[code] = TSS.Blips.Create(options)
     end
-    debugPrint("Blip Fully Created")
 end
 
 function ToggleBlipsVisibility()
     ShowMyBlips = not ShowMyBlips
-    for _,v in pairs(Blips) do
-        if DoesBlipExist(v) then
-            if ShowMyBlips then
-                SetBlipDisplay(v, 2)
-            else
-                SetBlipDisplay(v, 0)
-            end
-        end
+    for _, blip in pairs(Blips) do
+        TSS.Blips.Update(blip, { display = ShowMyBlips and 2 or 0 })
     end
 end
 
 function HasJob(jobcode)
-    local Player = getPlayer()
-    if Player.job == jobcode then
-        return true
-    else
-        return false
-    end
+    local job = TSS.Player.Job()
+    return job ~= nil and job.name == jobcode
 end
 
 -- RADIAL MENU

@@ -1,12 +1,7 @@
 Config = {
-    System = {
-        Debug = true,            -- set true to view target/ped areas
-        Menu = "ox",            -- "qb", "ox"
-        Notify = "ox",            -- "qb", "ox", "esx, "okok", "gta"
-        ProgressBar = "ox",     -- "qb", "ox"
-    },
-    Crafting = { --only here for bridge support
-        showItemBox = true,--will only show if your inventory supports it
+    TSS = {
+        Target = 'qb',
+        Notify = 'qb'
     },
     Options = {
         AllowSharing = true,
@@ -70,7 +65,7 @@ Config = {
             ['Spray Can'] = 72,
             ['Clothes'] = 73,
             ['Tattoo'] = 75,
-            ['Letter A'] = 76, 
+            ['Letter A'] = 76,
             ['Letter L'] = 77,
             ['Letter M'] = 78,
             ['Letter T'] = 79,

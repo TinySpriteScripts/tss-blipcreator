@@ -7,19 +7,23 @@ description 'tss-blipcreator'
 version '1.2.0'
 
 shared_scripts {
-    -- '@ox_lib/init.lua',
     'shared/*.lua',
-    '@jim_bridge/starter.lua',
 }
 
 client_scripts {
-    'client/*.lua',
+    'client/bridge.lua',
+    'client/utils.lua',
+    'client/main.lua',
+    'client/menus.lua',
 }
 
 server_scripts {
     '@oxmysql/lib/MySQL.lua',
-    'server/*.lua',
+    'server/bridge.lua',
+    'server/main.lua',
 }
 
 
-dependency 'jim_bridge'
+dependencies { 'tss_bridge', 'oxmysql' }
+
+files { 'images/blips/*.png' }

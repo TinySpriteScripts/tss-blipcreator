@@ -10,7 +10,7 @@ Need help with setup or encountering issues? Join our Discord: [Join Support Ser
 ---
 
 ## ❤️ Credits
-- [Jimathy](https://discord.gg/xKgQZ6wZvS) for his bridge
+- TinySprite Scripts for tss_bridge
 
 ---
 
@@ -20,7 +20,10 @@ Need help with setup or encountering issues? Join our Discord: [Join Support Ser
 2. Place the `tss-blipcreator` resource in that subfolder
 3. Ensure it is started in your `server.cfg`:
    ```cfg
-   ensure [tinysprite]
+   # Start your framework and inventory first
+   ensure oxmysql
+   ensure tss_bridge
+   ensure tss-blipcreator
    ```
 4. Run the file `player_blips.sql` in your database
 5. Configure script to your liking
@@ -28,8 +31,9 @@ Need help with setup or encountering issues? Join our Discord: [Join Support Ser
 ---
 
 ## 📦 Dependencies
-- [jim-bridge](https://github.com/jimathy/jim_bridge)
-- [ox_lib](https://github.com/overextended/ox_lib)
+- `tss_bridge`
+- `oxmysql`
+- A framework supported by tss_bridge (QB-Core, Qbox or ESX)
 
 ---
 
@@ -66,8 +70,36 @@ Need help with setup or encountering issues? Join our Discord: [Join Support Ser
 ### v1.2
 - Initial tss release
 - Key features listed
-- jim-bridge intergration
+- tss_bridge integration
 
 ---
 
 **© TinySprite Scripts** — Quality resources built for FiveM servers.
+## Bridge setup
+
+Menus and marker forms use the built-in TSS UI. Choose the label, sprite,
+colour and scale from the marker menu, then select Create or Update.
+Notifications and inventory selection follow tss_bridge configuration; the old
+per-script Menu, Notify, ProgressBar and Crafting settings are no longer used.
+Existing player_blips records and event names are preserved.
+The GPS item must already exist in your inventory. Its use handler is registered
+through `TSS.Inventory.CreateUseableItem`; the bridge selects the provider.
+For OX, use a plain item definition without `consume`, client use actions or a
+server export so OX routes use through the ESX/Qbox framework callback.
+
+Open the menu from a client command or radial action with:
+```lua
+TriggerEvent('tss-blipcreator:client:OpenMenu')
+```
+
+After updating, restart tss-blipcreator with tss_bridge already running.
+Test creating, editing, deleting and sharing a marker, and reconnect to verify
+saved markers load. Test the configured GPS item and required-item setting too.
+
+## Blip lifecycle
+
+Default markers, personal markers, temporary pings and GPS routes are created
+through `TSS.Blips`. Edits and visibility changes use `TSS.Blips.Update` without
+replacing handles. The bridge cleans up this resource's blips when it stops;
+character switches call `TSS.Blips.Clear`. Deleting a personal marker also removes
+its active ping and GPS route.

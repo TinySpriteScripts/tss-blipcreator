@@ -1,13 +1,9 @@
-onResourceStart(function()
-    CreateThread(function()
-        if Config.Options.BlipItem then
-            createUseableItem(Config.Options.BlipItem, function(source)
-                print("using item")
-                TriggerClientEvent('tss-blipcreator:client:OpenMenu', source)
-            end)
-        end
-    end)
-end, true )
+local function validOptions(label, sprite, colour, scale)
+    return type(label) == 'string' and #label <= 100 and label:match('%S')
+        and type(sprite) == 'string' and Config.BlipOptions.Sprites[sprite] ~= nil
+        and type(colour) == 'string' and Config.BlipOptions.Colours[colour] ~= nil
+        and type(scale) == 'string' and Config.BlipOptions.Scales[scale] ~= nil
+end
 
 function GenerateBlipCode(citizenid, callback)
     local UniqueFound = false
@@ -21,14 +17,14 @@ function GenerateBlipCode(citizenid, callback)
                 NewBlipCode = tostring(random)
                 if BlipData[NewBlipCode] == nil then
                     UniqueFound = true
-                    debugPrint("Found Unique Code")
+                    TSS.Debug.Print("Found Unique Code")
                 end
             end
             callback(tostring(NewBlipCode))
         else
             local random = math.random(1, 99999999)
             NewBlipCode = tostring(random)
-            debugPrint("No BlipData / Making new code")
+            TSS.Debug.Print("No BlipData / Making new code")
             callback(tostring(NewBlipCode))
         end
     end)
@@ -38,41 +34,46 @@ end
 RegisterNetEvent('tss-blipcreator:PlayerLoaded',function()
     local src = source
     if not src then return end
-    local Player = getPlayer(src)
-    if not Player then return end
+    local cid = TSS.Player.Identifier(src)
+    if not cid then return end
     print("inside player loaded server")
 
-    local cid = Player.citizenId
 
     print("player citizenid: "..tostring(cid))
     local FormattedData = {}
     MySQL.rawExecute('SELECT * FROM player_blips WHERE citizenid = ?', { cid }, function(result)
         if result[1] then
             local BlipData = json.decode(result[1].blips)
-            local DiscoveredBlips = json.decode(result[1].blip_discovery)
+            local DiscoveredBlips = result[1].blip_discovery and json.decode(result[1].blip_discovery) or {}
             TriggerClientEvent('tss-blipcreator:client:CreateBlips',src, BlipData, DiscoveredBlips)
         end
     end)
 end)
 
 RegisterNetEvent('tss-blipcreator:server:RegisterBlip', function(label, sprite, colour, scale, coords, senderSource)
-    debugPrint("RegisterBlip Reached Server")
+    if not validOptions(label, sprite, colour, scale) then return end
+    if type(coords) ~= "table" and type(coords) ~= "vector3" then return end
+    for _, axis in ipairs({ "x", "y", "z" }) do
+        local value = coords[axis]
+        if type(value) ~= "number" or value ~= value or math.abs(value) == math.huge then return end
+    end
+    TSS.Debug.Print("RegisterBlip Reached Server")
     local src = source
-    local Player = getPlayer(src)
-    local citizenid = Player.citizenId
+    local citizenid = TSS.Player.Identifier(src)
+    if not citizenid then return end
     local blipcount = 0
 
-    if not senderSource and Config.Options.BlipCreationRequiresThisItem and not hasItem(Config.Options.BlipCreationRequiresThisItem, 1, src) then
-        triggerNotify("Item Needed", "You Need a "..Items[Config.Options.BlipCreationRequiresThisItem].label, 'error', src)
+    if not senderSource and Config.Options.BlipCreationRequiresThisItem and not TSS.Inventory.Has(src, Config.Options.BlipCreationRequiresThisItem, 1) then
+        MarkerNotify("Item Needed", "You Need a "..MarkerItemLabel(Config.Options.BlipCreationRequiresThisItem), 'error', src)
         return
     end
 
-    
+
     GenerateBlipCode(citizenid, function(NewBlipCode)
-        debugPrint("New Blip Code Returned")
+        TSS.Debug.Print("New Blip Code Returned")
         MySQL.rawExecute('SELECT * FROM player_blips WHERE citizenid = ?', { citizenid }, function(result)
             if result[1] then
-                debugPrint("Found Existing BlipData")
+                TSS.Debug.Print("Found Existing BlipData")
                 local BlipData = json.decode(result[1].blips)
                 for k,v in pairs(BlipData) do
                     blipcount = blipcount + 1
@@ -86,16 +87,16 @@ RegisterNetEvent('tss-blipcreator:server:RegisterBlip', function(label, sprite, 
                         scale = scale,
                     }
                     local FormattedData = json.encode(BlipData)
-                    MySQL.update('UPDATE player_blips SET blips = ? WHERE citizenid = ?', { FormattedData, citizenid }) 
+                    MySQL.update('UPDATE player_blips SET blips = ? WHERE citizenid = ?', { FormattedData, citizenid })
                     TriggerClientEvent('tss-blipcreator:client:NewBlipRegistered', src, BlipData, NewBlipCode)
                     if senderSource ~= nil then
-                        triggerNotify("Share Accepted", "Your Share Was Accepted", 'success', senderSource)
+                        MarkerNotify("Share Accepted", "Your Share Was Accepted", 'success', senderSource)
                     end
                 else
-                    triggerNotify("Marker Limit Reached", "Cannot Place More Markers", 'error', src)
+                    MarkerNotify("Marker Limit Reached", "Cannot Place More Markers", 'error', src)
                 end
             else
-                debugPrint("No Existing BlipData / Creating New")
+                TSS.Debug.Print("No Existing BlipData / Creating New")
                 local BlipData = {}
                 BlipData[NewBlipCode] = {
                     coords = coords,
@@ -108,10 +109,10 @@ RegisterNetEvent('tss-blipcreator:server:RegisterBlip', function(label, sprite, 
                     citizenid,
                     json.encode(BlipData),
                 })
-                debugPrint("New BlipData Inserted/ creating new blip")
+                TSS.Debug.Print("New BlipData Inserted/ creating new blip")
                 TriggerClientEvent('tss-blipcreator:client:NewBlipRegistered', src, BlipData, NewBlipCode)
                 if senderSource ~= nil then
-                    triggerNotify("Share Accepted", "Your Share Was Accepted", 'success', senderSource)
+                    MarkerNotify("Share Accepted", "Your Share Was Accepted", 'success', senderSource)
                 end
             end
         end)
@@ -119,14 +120,15 @@ RegisterNetEvent('tss-blipcreator:server:RegisterBlip', function(label, sprite, 
 end)
 
 RegisterNetEvent('tss-blipcreator:server:UpdateBlip', function(id, label, sprite, colour, scale)
-    debugPrint("UpadteBlip Reached Server")
+    if not validOptions(label, sprite, colour, scale) then return end
+    TSS.Debug.Print("UpadteBlip Reached Server")
     local src = source
-    local Player = getPlayer(src)
-    local citizenid = Player.citizenId
+    local citizenid = TSS.Player.Identifier(src)
+    if not citizenid then return end
 
     MySQL.rawExecute('SELECT * FROM player_blips WHERE citizenid = ?', { citizenid }, function(result)
         if result[1] then
-            debugPrint("Found Existing BlipData")
+            TSS.Debug.Print("Found Existing BlipData")
             local BlipData = json.decode(result[1].blips)
             if BlipData[id] ~= nil then
                 BlipData[id].label = label
@@ -134,14 +136,14 @@ RegisterNetEvent('tss-blipcreator:server:UpdateBlip', function(id, label, sprite
                 BlipData[id].colour = colour
                 BlipData[id].scale = scale
                 local FormattedData = json.encode(BlipData)
-                MySQL.update('UPDATE player_blips SET blips = ? WHERE citizenid = ?', { FormattedData, citizenid }) 
+                MySQL.update('UPDATE player_blips SET blips = ? WHERE citizenid = ?', { FormattedData, citizenid })
                 TriggerClientEvent('tss-blipcreator:client:UpdateBlip', src, BlipData, id)
                 TriggerClientEvent('tss-blipcreator:client:ManageMarkersMenu', src)
             else
-                debugPrint("Cannot Find Blip With Matching ID")
+                TSS.Debug.Print("Cannot Find Blip With Matching ID")
             end
         else
-            debugPrint("No Existing BlipData / should not have reached this point")
+            TSS.Debug.Print("No Existing BlipData / should not have reached this point")
         end
     end)
 end)
@@ -149,22 +151,22 @@ end)
 RegisterNetEvent('tss-blipcreator:server:DeleteBlip', function(ID)
     local id = ID
     local src = source
-    local Player = getPlayer(src)
-    local citizenid = Player.citizenId
+    local citizenid = TSS.Player.Identifier(src)
+    if not citizenid then return end
     MySQL.rawExecute('SELECT * FROM player_blips WHERE citizenid = ?', { citizenid }, function(result)
         if result[1] then
             local BlipData = json.decode(result[1].blips)
             if BlipData[id] ~= nil then
                 BlipData[id] = nil
                 local FormattedData = json.encode(BlipData)
-                MySQL.update('UPDATE player_blips SET blips = ? WHERE citizenid = ?', { FormattedData, citizenid }) 
+                MySQL.update('UPDATE player_blips SET blips = ? WHERE citizenid = ?', { FormattedData, citizenid })
                 TriggerClientEvent('tss-blipcreator:client:RemoveBlip',src, id)
                 TriggerClientEvent('tss-blipcreator:client:ManageMarkersMenu', src)
             else
-                debugPrint("Error Finding Blip Data for Citizenid: "..citizenid.." with blip ID: "..tostring(id))
+                TSS.Debug.Print("Error Finding Blip Data for Citizenid: "..citizenid.." with blip ID: "..tostring(id))
             end
         else
-            debugPrint("No Blip Data For Citizenid: "..citizenid)
+            TSS.Debug.Print("No Blip Data For Citizenid: "..citizenid)
             TriggerClientEvent('tss-blipcreator:client:RemoveBlip',src, id)
             TriggerClientEvent('tss-blipcreator:client:ManageMarkersMenu', src)
         end
@@ -172,43 +174,40 @@ RegisterNetEvent('tss-blipcreator:server:DeleteBlip', function(ID)
 end)
 
 RegisterNetEvent('tss-blipcreator:server:ShareBlipWith', function(blip_id, target_source)
-    debugPrint("ShareBlip Reached Server")
+    TSS.Debug.Print("ShareBlip Reached Server")
     local src = source
-    local Player = getPlayer(src)
-    local Target = getPlayer(target_source)
-    local citizenid = Player.citizenId
-    local sender_name = Player.firstname.." "..Player.lastname
-    local sender_info = {
-        senderSource = src,
-        name = sender_name,
-    }
-    local target_citizenid = Target.citizenId
+    target_source = tonumber(target_source)
+    local citizenid = TSS.Player.Identifier(src)
+    if not Config.Options.AllowSharing or not citizenid or not target_source or not TSS.Player.Identifier(target_source) then return end
+    local senderPed, targetPed = GetPlayerPed(src), GetPlayerPed(target_source)
+    if senderPed == 0 or targetPed == 0 then return end
+    if #(GetEntityCoords(senderPed) - GetEntityCoords(targetPed)) > Config.Options.SharingDistance then return end
+    local sender_info = { senderSource = src, name = TSS.Player.Name(src) or GetPlayerName(src) }
     local target_blipcount = 0
     local BlipData = {}
 
-    debugPrint("ShareBlipWith: server: blip_id: "..tostring(blip_id))
+    TSS.Debug.Print("ShareBlipWith: server: blip_id: "..tostring(blip_id))
 
     MySQL.rawExecute('SELECT * FROM player_blips WHERE citizenid = ?', { citizenid }, function(result)
         if result[1] then
-            debugPrint("Found Existing BlipData to share")
+            TSS.Debug.Print("Found Existing BlipData to share")
             BlipData = json.decode(result[1].blips)
             if BlipData[blip_id] ~= nil then
                 TriggerClientEvent('tss-blipcreator:client:ReceiveBlip', target_source, BlipData[blip_id], sender_info)
             else
-                debugPrint("Cannot Find Blip With Matching ID")
+                TSS.Debug.Print("Cannot Find Blip With Matching ID")
             end
         else
-            debugPrint("No Existing BlipData / should not have reached this point")
+            TSS.Debug.Print("No Existing BlipData / should not have reached this point")
         end
     end)
 end)
 
-createCallback("tss-blipcreator:server:GetBlipData", function(source, blip_id)
+TSS.Callbacks.Register("tss-blipcreator:server:GetBlipData", function(source, blip_id)
 	if not source then return end
-    local Player = getPlayer(source)
-    if not Player then return end
-    local citizenid = Player.citizenId
-    debugPrint("getting blip data: id: "..tostring(blip_id).." for cid: "..tostring(citizenid))
+    local citizenid = TSS.Player.Identifier(source)
+    if not citizenid then return end
+    TSS.Debug.Print("getting blip data: id: "..tostring(blip_id).." for cid: "..tostring(citizenid))
     local p = promise.new()
 
     local BlipData = {}
@@ -225,12 +224,11 @@ createCallback("tss-blipcreator:server:GetBlipData", function(source, blip_id)
     return Citizen.Await(p)
 end)
 
-createCallback('tss-blipcreator:server:GetMyBlips', function(source, cb)
+TSS.Callbacks.Register('tss-blipcreator:server:GetMyBlips', function(source, cb)
     if not source then return end
-    local Player = getPlayer(source)
-    if not Player then return end
-    local citizenid = Player.citizenId
-    debugPrint("getting my blips: cid: "..tostring(citizenid))
+    local citizenid = TSS.Player.Identifier(source)
+    if not citizenid then return end
+    TSS.Debug.Print("getting my blips: cid: "..tostring(citizenid))
     local p = promise.new()
 
     local BlipData = {}
@@ -247,15 +245,21 @@ createCallback('tss-blipcreator:server:GetMyBlips', function(source, cb)
     return Citizen.Await(p)
 end)
 
-createCallback('tss-blipcreator:server:GetNearbyPlayers', function(source)
-	local nearbyPlayers = {}
-	for _, v in pairs(GetActivePlayers()) do
-		local Player = getPlayer(v)
-		nearbyPlayers[#nearbyPlayers+1] = { 
-            nearbySource = v,
-            citizenid = Player.citizenId, 
-            name = Player.firstname..' '..Player.lastname  
-        }
-	end
-	return nearbyPlayers
+TSS.Callbacks.Register('tss-blipcreator:server:GetNearbyPlayers', function(source)
+    local nearbyPlayers = {}
+    local ped = GetPlayerPed(source)
+    if ped == 0 then return nearbyPlayers end
+    local coords = GetEntityCoords(ped)
+    for _, id in ipairs(GetPlayers()) do
+        local target = tonumber(id)
+        local targetPed = GetPlayerPed(target)
+        if target ~= source and targetPed ~= 0 and TSS.Player.Identifier(target)
+            and #(GetEntityCoords(targetPed) - coords) <= Config.Options.SharingDistance then
+            nearbyPlayers[#nearbyPlayers + 1] = {
+                nearbySource = target,
+                name = TSS.Player.Name(target) or GetPlayerName(target),
+            }
+        end
+    end
+    return nearbyPlayers
 end)
